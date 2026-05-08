@@ -18,6 +18,7 @@ build:
 
   # a list of packages in the format <package-name>==<version>
   python_packages:
+    - "setuptools<69"
     - ipython
     - pynini
     - torch==2.3.1
