@@ -81,8 +81,11 @@ class Predictor(BasePredictor):
                 tts_text, instruction, prompt_speech_16k, stream=False
             )
 
+        # 收集所有生成块再拼接，支持长文本（修复原版只取首块导致 ~80 字截断的问题）
+        import torch
+        all_chunks = [item["tts_speech"] for item in output]
+        combined = torch.cat(all_chunks, dim=1) if len(all_chunks) > 1 else all_chunks[0]
+
         out_path = "/tmp/out.wav"
-        torchaudio.save(
-            out_path, list(output)[0]["tts_speech"], self.cosyvoice.sample_rate
-        )
+        torchaudio.save(out_path, combined, self.cosyvoice.sample_rate)
         return Path(out_path)
