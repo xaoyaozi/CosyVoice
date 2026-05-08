@@ -32,6 +32,7 @@ build:
     - huggingface-hub==0.23.5
     - hydra-core==1.3.2
     - HyperPyYAML==1.2.2
+    - "ruamel.yaml<0.19"
     - inflect==7.3.1
     - librosa==0.10.2
     - lightning==2.2.4
