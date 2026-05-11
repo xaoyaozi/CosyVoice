@@ -63,22 +63,36 @@ class Predictor(BasePredictor):
         ),
     ) -> Path:
         """Run a single prediction on the model"""
+        # 输入预处理：避免 cosyvoice frontend tokenizer 在重复字符 / 异常空白上抛 IndexError
+        # （2026-05-11 实战触发：用户文案含 "啊 啊 啊" 等 3+ 重复字符导致 string index out of range）
+        import re
+        tts_text = (tts_text or "").strip()
+        if not tts_text:
+            raise ValueError("tts_text cannot be empty")
+        tts_text = re.sub(r"(\S)\1{2,}", r"\1", tts_text)  # 3+ 同字符折叠为 1 个
+        tts_text = re.sub(r"\s+", " ", tts_text)            # 多空白折叠为单空格
+
         if task == "Instructed Voice Generation":
             assert len(instruction) > 0, "Please specify the instruction."
 
         prompt_speech_16k = load_wav(str(source_audio), 16000)
 
-        if task == "zero-shot voice clone":
-            output = self.cosyvoice.inference_zero_shot(
-                tts_text, source_transcript, prompt_speech_16k, stream=False
-            )
-        elif task == "cross-lingual voice clone":
-            output = self.cosyvoice.inference_cross_lingual(
-                tts_text, prompt_speech_16k, stream=False
-            )
-        else:
-            output = self.cosyvoice.inference_instruct2(
-                tts_text, instruction, prompt_speech_16k, stream=False
+        try:
+            if task == "zero-shot voice clone":
+                output = self.cosyvoice.inference_zero_shot(
+                    tts_text, source_transcript, prompt_speech_16k, stream=False
+                )
+            elif task == "cross-lingual voice clone":
+                output = self.cosyvoice.inference_cross_lingual(
+                    tts_text, prompt_speech_16k, stream=False
+                )
+            else:
+                output = self.cosyvoice.inference_instruct2(
+                    tts_text, instruction, prompt_speech_16k, stream=False
+                )
+        except IndexError as e:
+            raise RuntimeError(
+                f"Text tokenization failed (try simpler punctuation, fewer special characters): {e}"
             )
 
         # 收集所有生成块再拼接，支持长文本（修复原版只取首块导致 ~80 字截断的问题）
